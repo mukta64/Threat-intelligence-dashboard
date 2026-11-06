@@ -122,12 +122,14 @@ def show_authentication_page():
                             "username": profile.get("username", email.split("@")[0]),
                             "role": profile.get("role", "user")
                         }
-                        log_audit_event(
+                        audit_result = log_audit_event(
                             supabase,
                             st.session_state["auth_user"],
                             "login",
                             "success"
                         )
+                        if not audit_result.get("success"):
+                            st.warning("Login succeeded, but its audit record could not be saved: " + audit_result.get("error", "Unknown error"))
                         st.success("Login successful.")
                         st.rerun()
                 except Exception as exc:
@@ -172,12 +174,14 @@ def show_authentication_page():
                             "username": profile.get("username", username.strip()),
                             "role": profile.get("role", "user")
                         }
-                        log_audit_event(
+                        audit_result = log_audit_event(
                             supabase,
                             st.session_state["auth_user"],
                             "signup",
                             "success"
                         )
+                        if not audit_result.get("success"):
+                            st.warning("Account created, but its audit record could not be saved: " + audit_result.get("error", "Unknown error"))
                         st.success("Account created. You are now logged in.")
                         st.rerun()
                     else:
@@ -302,7 +306,9 @@ st.sidebar.write(f"Signed in: **{current_user.get('username') or current_user.ge
 st.sidebar.caption(f"Role: {current_user.get('role', 'user')}")
 
 if st.sidebar.button("Logout", use_container_width=True):
-    log_audit_event(supabase, current_user, "logout", "success")
+    audit_result = log_audit_event(supabase, current_user, "logout", "success")
+    if not audit_result.get("success"):
+        st.warning("Logout audit record could not be saved: " + audit_result.get("error", "Unknown error"))
     try:
         supabase.auth.sign_out()
     except Exception:
@@ -499,7 +505,7 @@ elif page == "Investigate Indicator":
                         abuse_result,
                         current_user["id"]
                     )
-                    log_audit_event(
+                    audit_result = log_audit_event(
                         supabase,
                         current_user,
                         "investigation",
@@ -507,6 +513,8 @@ elif page == "Investigate Indicator":
                         indicator=indicator,
                         details={"indicator_type": indicator_type}
                     )
+                    if not audit_result.get("success"):
+                        st.warning("Investigation completed, but its audit record could not be saved: " + audit_result.get("error", "Unknown error"))
 
     # DISPLAY RESULTS
 
@@ -1109,7 +1117,7 @@ elif page == "Admin Audit Logs":
         try:
             audit_rows = (
                 supabase.table("audit_logs")
-                .select("created_at, username, action, indicator, status, details")
+                .select("created_at, user_id, username, action, indicator, status, details")
                 .order("created_at", desc=True)
                 .limit(500)
                 .execute()
