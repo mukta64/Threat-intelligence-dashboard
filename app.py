@@ -8,6 +8,8 @@ import json
 from modules.virustotal import check_virustotal, identify_indicator
 from modules.abuseipdb import check_abuseipdb
 from modules.history import save_history, get_history
+from modules.supabase_client import get_supabase_client
+from modules.auth import ensure_profile, log_audit_event
 
 
 # ==================================================
@@ -74,6 +76,147 @@ div[data-testid="stMetric"] label {
 
 
 # ==================================================
+# SUPABASE AUTHENTICATION
+# ==================================================
+
+try:
+    supabase = get_supabase_client()
+except Exception as exc:
+    st.error("Supabase connection is not configured correctly.")
+    st.caption(str(exc))
+    st.info(
+        "Check SUPABASE_URL and SUPABASE_KEY in your local .env file "
+        "and Streamlit Cloud Secrets."
+    )
+    st.stop()
+
+
+def show_authentication_page():
+    st.title("🛡️ Threat Intelligence Dashboard")
+    st.subheader("Sign in to continue")
+
+    login_tab, signup_tab = st.tabs(["Login", "Create Account"])
+
+    with login_tab:
+        with st.form("login_form"):
+            email = st.text_input("Email address")
+            password = st.text_input("Password", type="password")
+            login_clicked = st.form_submit_button("Login", use_container_width=True)
+
+        if login_clicked:
+            if not email.strip() or not password:
+                st.warning("Enter your email address and password.")
+            else:
+                try:
+                    response = supabase.auth.sign_in_with_password({
+                        "email": email.strip(),
+                        "password": password
+                    })
+                    if not response.user:
+                        st.error("Login failed. Please check your details.")
+                    else:
+                        profile = ensure_profile(supabase, response.user)
+                        st.session_state["auth_user"] = {
+                            "id": response.user.id,
+                            "email": response.user.email,
+                            "username": profile.get("username", email.split("@")[0]),
+                            "role": profile.get("role", "user")
+                        }
+                        log_audit_event(
+                            supabase,
+                            st.session_state["auth_user"],
+                            "login",
+                            "success"
+                        )
+                        st.success("Login successful.")
+                        st.rerun()
+                except Exception as exc:
+                    st.error("Login failed. Check your email, password, and email verification.")
+                    st.caption(str(exc))
+
+    with signup_tab:
+        with st.form("signup_form"):
+            username = st.text_input("Username")
+            new_email = st.text_input("Email address", key="signup_email")
+            new_password = st.text_input("Password", type="password", key="signup_password")
+            confirm_password = st.text_input(
+                "Confirm password", type="password"
+            )
+            signup_clicked = st.form_submit_button(
+                "Create Account", use_container_width=True
+            )
+
+        if signup_clicked:
+            if not username.strip() or not new_email.strip() or not new_password:
+                st.warning("Complete all fields.")
+            elif len(new_password) < 8:
+                st.warning("Use a password with at least 8 characters.")
+            elif new_password != confirm_password:
+                st.warning("Passwords do not match.")
+            else:
+                try:
+                    response = supabase.auth.sign_up({
+                        "email": new_email.strip(),
+                        "password": new_password,
+                        "options": {
+                            "data": {"username": username.strip()}
+                        }
+                    })
+                    if response.session and response.user:
+                        profile = ensure_profile(
+                            supabase, response.user, username.strip()
+                        )
+                        st.session_state["auth_user"] = {
+                            "id": response.user.id,
+                            "email": response.user.email,
+                            "username": profile.get("username", username.strip()),
+                            "role": profile.get("role", "user")
+                        }
+                        log_audit_event(
+                            supabase,
+                            st.session_state["auth_user"],
+                            "signup",
+                            "success"
+                        )
+                        st.success("Account created. You are now logged in.")
+                        st.rerun()
+                    else:
+                        st.success(
+                            "Account created. Check your email to confirm your account, "
+                            "then return here and log in."
+                        )
+                except Exception as exc:
+                    st.error("Account creation failed.")
+                    st.caption(str(exc))
+
+
+if "auth_user" not in st.session_state:
+    show_authentication_page()
+    st.stop()
+
+current_user = st.session_state["auth_user"]
+
+# Refresh the user's role from the database on each app run.
+try:
+    profile_rows = (
+        supabase.table("profiles")
+        .select("username, role")
+        .eq("id", current_user["id"])
+        .execute()
+        .data
+    )
+    if profile_rows:
+        current_user["username"] = profile_rows[0].get(
+            "username", current_user.get("username", "")
+        )
+        current_user["role"] = profile_rows[0].get("role", "user")
+except Exception as exc:
+    st.error("Could not verify your account profile. Check Supabase table permissions.")
+    st.caption(str(exc))
+    st.stop()
+
+
+# ==================================================
 # HELPER FUNCTIONS
 # ==================================================
 
@@ -112,41 +255,40 @@ def make_table(data):
     return pd.DataFrame(rows)
 
 
-def save_investigation(indicator, vt_result, abuse_result):
-
+def save_investigation(indicator, vt_result, abuse_result, user_id):
     today = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    indicator_type = identify_indicator(indicator)
 
     if vt_result and "error" not in vt_result:
-
         attrs = vt_result.get("attributes", {})
         stats = attrs.get("last_analysis_stats", {})
-
-        save_history({
-            "Date": today,
-            "Indicator": indicator,
-            "Source": "VirusTotal",
-            "Malicious": stats.get("malicious", 0),
-            "Suspicious": stats.get("suspicious", 0),
-            "Harmless": stats.get("harmless", 0),
-            "Undetected": stats.get("undetected", 0)
-        })
+        try:
+            save_history({
+                "Date": today,
+                "Indicator": indicator,
+                "Indicator Type": indicator_type,
+                "Source": "VirusTotal",
+                "Malicious": stats.get("malicious", 0),
+                "Suspicious": stats.get("suspicious", 0),
+                "Harmless": stats.get("harmless", 0),
+                "Undetected": stats.get("undetected", 0)
+            }, user_id)
+        except Exception as exc:
+            st.warning(f"Could not save VirusTotal history: {exc}")
 
     if abuse_result and "error" not in abuse_result:
-
-        save_history({
-            "Date": today,
-            "Indicator": indicator,
-            "Source": "AbuseIPDB",
-            "Abuse Score": abuse_result.get(
-                "abuseConfidenceScore", ""
-            ),
-            "Total Reports": abuse_result.get(
-                "totalReports", ""
-            ),
-            "Country": abuse_result.get(
-                "countryCode", ""
-            )
-        })
+        try:
+            save_history({
+                "Date": today,
+                "Indicator": indicator,
+                "Indicator Type": indicator_type,
+                "Source": "AbuseIPDB",
+                "Abuse Score": abuse_result.get("abuseConfidenceScore", ""),
+                "Total Reports": abuse_result.get("totalReports", ""),
+                "Country": abuse_result.get("countryCode", "")
+            }, user_id)
+        except Exception as exc:
+            st.warning(f"Could not save AbuseIPDB history: {exc}")
 
 
 # ==================================================
@@ -156,25 +298,38 @@ def save_investigation(indicator, vt_result, abuse_result):
 
 st.sidebar.markdown("## 🛡️ Threat Intelligence")
 st.sidebar.caption("Automated Investigation Platform")
+st.sidebar.write(f"Signed in: **{current_user.get('username') or current_user.get('email')}**")
+st.sidebar.caption(f"Role: {current_user.get('role', 'user')}")
+
+if st.sidebar.button("Logout", use_container_width=True):
+    log_audit_event(supabase, current_user, "logout", "success")
+    try:
+        supabase.auth.sign_out()
+    except Exception:
+        pass
+    st.session_state.pop("auth_user", None)
+    st.rerun()
+
+navigation_pages = [
+    "Overview",
+    "Investigate Indicator",
+    "History",
+    "Analytics",
+    "About Project"
+]
+if current_user.get("role") == "admin":
+    navigation_pages.append("Admin Audit Logs")
 
 page = st.sidebar.radio(
     "Navigation",
-    [
-        "Overview",
-        "Investigate Indicator",
-        "History",
-        "Analytics",
-        "About Project"
-    ],
+    navigation_pages,
     key="page"
 )
 
 st.sidebar.divider()
-
 st.sidebar.caption("Data Sources")
 st.sidebar.write("🟢 VirusTotal API")
 st.sidebar.write("🟢 AbuseIPDB API")
-
 
 # ==================================================
 # OVERVIEW PAGE
@@ -195,7 +350,7 @@ if page == "Overview":
     st.write("")
 
     try:
-        history = get_history()
+        history = get_history(current_user["id"])
     except Exception:
         history = []
 
@@ -219,7 +374,7 @@ if page == "Overview":
     )
 
     abuse_count = sum(
-        int(item.get("Abuse Score") or 0) > 0
+        safe_int(item.get("Abuse Score")) > 0
         for item in history
     )
 
@@ -341,7 +496,16 @@ elif page == "Investigate Indicator":
                     save_investigation(
                         indicator,
                         vt_result,
-                        abuse_result
+                        abuse_result,
+                        current_user["id"]
+                    )
+                    log_audit_event(
+                        supabase,
+                        current_user,
+                        "investigation",
+                        "completed",
+                        indicator=indicator,
+                        details={"indicator_type": indicator_type}
                     )
 
     # DISPLAY RESULTS
@@ -771,7 +935,7 @@ elif page == "History":
 
     st.title("📜 Investigation History")
 
-    history = get_history()
+    history = get_history(current_user["id"])
 
     if history:
 
@@ -815,7 +979,7 @@ elif page == "Analytics":
 
     st.title("📊 Threat Analytics")
 
-    history = get_history()
+    history = get_history(current_user["id"])
 
     if history:
 
@@ -914,7 +1078,8 @@ elif page == "About Project":
     - Streamlit
     - Pandas
     - Requests
-    - SQLite
+    - Supabase PostgreSQL
+    - Supabase Authentication
     - VirusTotal API
     - AbuseIPDB API
 
@@ -927,3 +1092,45 @@ elif page == "About Project":
     st.info(
         "This tool supports investigations. It does not independently prove that an indicator is malicious or safe."
     )
+
+
+# ==================================================
+# ADMIN AUDIT LOGS PAGE
+# ==================================================
+
+elif page == "Admin Audit Logs":
+
+    st.title("🔐 Admin Audit Logs")
+    st.caption("Visible only to accounts with the admin role.")
+
+    if current_user.get("role") != "admin":
+        st.error("You do not have permission to view audit logs.")
+    else:
+        try:
+            audit_rows = (
+                supabase.table("audit_logs")
+                .select("created_at, username, action, indicator, status, details")
+                .order("created_at", desc=True)
+                .limit(500)
+                .execute()
+                .data
+            )
+
+            if audit_rows:
+                audit_df = pd.DataFrame(audit_rows)
+                st.dataframe(
+                    audit_df,
+                    use_container_width=True,
+                    hide_index=True
+                )
+                st.download_button(
+                    "Download Audit Logs CSV",
+                    audit_df.to_csv(index=False),
+                    file_name="admin_audit_logs.csv",
+                    mime="text/csv"
+                )
+            else:
+                st.info("No audit log records are available yet.")
+        except Exception as exc:
+            st.error("Could not load audit logs. Check the audit_logs table and RLS policies.")
+            st.caption(str(exc))
