@@ -57,12 +57,9 @@ def log_audit_event(
     indicator=None,
     details=None
 ):
-    """
-    Store an audit event for the signed-in user.
-    The database RLS policy must restrict inserts to auth.uid().
-    """
+    """Insert one audit event and return a visible success/error result."""
     if not user or not user.get("id"):
-        return
+        return {"success": False, "error": "No authenticated user ID was supplied."}
 
     payload = {
         "user_id": user["id"],
@@ -74,8 +71,8 @@ def log_audit_event(
     }
 
     try:
-        client.table("audit_logs").insert(payload).execute()
-    except Exception:
-        # Do not interrupt a threat investigation if audit logging fails.
-        # Configure and test the audit_logs table/RLS in Supabase.
-        return
+        response = client.table("audit_logs").insert(payload).execute()
+        return {"success": True, "data": response.data or []}
+    except Exception as exc:
+        # Return the real Supabase error instead of silently hiding it.
+        return {"success": False, "error": str(exc)}
