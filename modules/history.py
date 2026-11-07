@@ -1,89 +1,89 @@
 
-import sqlite3
+from datetime import datetime, timezone
 
-DB_NAME = "threat_history.db"
+from modules.supabase_client import get_supabase_client
 
 
-def save_history(record):
+def save_history(record, user_id):
+    """Save an investigation result for the signed-in user."""
 
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
+    if not user_id:
+        raise ValueError("User ID is required to save investigation history.")
 
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS investigations (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            date TEXT,
-            indicator TEXT,
-            source TEXT,
-            malicious TEXT,
-            suspicious TEXT,
-            harmless TEXT,
-            undetected TEXT,
-            abuse_score TEXT,
-            total_reports TEXT,
-            country TEXT
+    if not isinstance(record, dict):
+        raise ValueError("Investigation record must be a dictionary.")
+
+    client = get_supabase_client()
+
+    payload = {
+        "user_id": user_id,
+        "indicator": str(record.get("Indicator", "")),
+        "indicator_type": str(record.get("Indicator Type", "")),
+        "source": str(record.get("Source", "")),
+        "malicious": str(record.get("Malicious", "")),
+        "suspicious": str(record.get("Suspicious", "")),
+        "harmless": str(record.get("Harmless", "")),
+        "undetected": str(record.get("Undetected", "")),
+        "abuse_score": str(record.get("Abuse Score", "")),
+        "total_reports": str(record.get("Total Reports", "")),
+        "country": str(record.get("Country", ""))
+    }
+
+    client.table("investigations").insert(payload).execute()
+    return True
+
+
+def get_history(user_id):
+    """Get only the investigations belonging to the signed-in user."""
+
+    if not user_id:
+        return []
+
+    client = get_supabase_client()
+
+    result = (
+        client.table("investigations")
+        .select(
+            "created_at, indicator, indicator_type, source, "
+            "malicious, suspicious, harmless, undetected, "
+            "abuse_score, total_reports, country"
         )
-    """)
+        .eq("user_id", user_id)
+        .order("created_at", desc=True)
+        .limit(1000)
+        .execute()
+    )
 
-    cursor.execute("""
-        INSERT INTO investigations (
-            date, indicator, source, malicious,
-            suspicious, harmless, undetected,
-            abuse_score, total_reports, country
-        )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """, (
-        record.get("Date", ""),
-        record.get("Indicator", ""),
-        record.get("Source", ""),
-        str(record.get("Malicious", "")),
-        str(record.get("Suspicious", "")),
-        str(record.get("Harmless", "")),
-        str(record.get("Undetected", "")),
-        str(record.get("Abuse Score", "")),
-        str(record.get("Total Reports", "")),
-        str(record.get("Country", ""))
-    ))
+    history = []
 
-    conn.commit()
-    conn.close()
+    for row in result.data or []:
+        created_at = row.get("created_at", "")
 
+        if created_at:
+            try:
+                parsed = datetime.fromisoformat(
+                    created_at.replace("Z", "+00:00")
+                )
+                date_value = parsed.astimezone(timezone.utc).strftime(
+                    "%Y-%m-%d %H:%M:%S UTC"
+                )
+            except (ValueError, AttributeError):
+                date_value = str(created_at)
+        else:
+            date_value = ""
 
-def get_history():
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
+        history.append({
+            "Date": date_value,
+            "Indicator": row.get("indicator", ""),
+            "Indicator Type": row.get("indicator_type", ""),
+            "Source": row.get("source", ""),
+            "Malicious": row.get("malicious", ""),
+            "Suspicious": row.get("suspicious", ""),
+            "Harmless": row.get("harmless", ""),
+            "Undetected": row.get("undetected", ""),
+            "Abuse Score": row.get("abuse_score", ""),
+            "Total Reports": row.get("total_reports", ""),
+            "Country": row.get("country", "")
+        })
 
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS investigations (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            date TEXT,
-            indicator TEXT,
-            source TEXT,
-            malicious TEXT,
-            suspicious TEXT,
-            harmless TEXT,
-            undetected TEXT,
-            abuse_score TEXT,
-            total_reports TEXT,
-            country TEXT
-        )
-    """)
-
-    cursor.execute("""
-        SELECT date, indicator, source, malicious,
-        suspicious, harmless, undetected,
-        abuse_score, total_reports, country
-        FROM investigations
-        ORDER BY id DESC
-    """)
-
-    rows = cursor.fetchall()
-    conn.close()
-
-    columns = [
-        "Date", "Indicator", "Source", "Malicious",
-        "Suspicious", "Harmless", "Undetected",
-        "Abuse Score", "Total Reports", "Country"
-    ]
-
-    return [dict(zip(columns, row)) for row in rows]
+    return history
