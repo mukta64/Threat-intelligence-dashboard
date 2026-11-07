@@ -128,10 +128,17 @@ def show_authentication_page():
                             "login",
                             "success"
                         )
+
                         if not audit_result.get("success"):
-                            st.warning("Login succeeded, but its audit record could not be saved: " + audit_result.get("error", "Unknown error"))
+                           st.session_state["audit_login_error"] = audit_result.get(
+                               "error", "Unknown Supabase error"
+                           )
+                        else:
+                            st.session_state.pop("audit_login_error", None)
+
                         st.success("Login successful.")
                         st.rerun()
+                        if not audit_result.get
                 except Exception as exc:
                     st.error("Login failed. Check your email, password, and email verification.")
                     st.caption(str(exc))
@@ -197,6 +204,10 @@ def show_authentication_page():
 if "auth_user" not in st.session_state:
     show_authentication_page()
     st.stop()
+
+if st.session_state.get("audit_login_error"):
+    st.error("LOGIN AUDIT ERROR:")
+    st.code(st.session_state["audit_login_error"])   
 
 current_user = st.session_state["auth_user"]
 
