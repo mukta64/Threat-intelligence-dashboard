@@ -1,16 +1,14 @@
+from modules.supabase_client import get_supabase_client
+
 
 def ensure_profile(client, auth_user, preferred_username=None):
     """
-    Get the user's profile or create one.
-    New accounts always receive the user role.
+    Make sure the authenticated user has a row in public.profiles.
+    New profiles are always created with role='user'.
+    Admin privileges must be assigned manually in Supabase SQL Editor.
     """
-
-    if not auth_user or not auth_user.id:
-        raise ValueError("Authenticated user information is missing.")
-
     user_id = auth_user.id
     email = auth_user.email or ""
-
     metadata = getattr(auth_user, "user_metadata", None) or {}
 
     username = (
@@ -19,38 +17,36 @@ def ensure_profile(client, auth_user, preferred_username=None):
         or (email.split("@")[0] if email else "user")
     )
 
-    # Check whether this user's profile already exists.
     result = (
         client.table("profiles")
         .select("id, username, role")
         .eq("id", user_id)
-        .maybe_single()
         .execute()
     )
 
-    if result.data:
-        return result.data
+    rows = result.data or []
+    if rows:
+        return rows[0]
 
-    # Create a profile for a new user.
     client.table("profiles").insert({
         "id": user_id,
         "username": username,
         "role": "user"
     }).execute()
 
-    # Read the newly created profile.
     result = (
         client.table("profiles")
         .select("id, username, role")
         .eq("id", user_id)
-        .single()
         .execute()
     )
 
     if not result.data:
-        raise RuntimeError("Could not load your user profile.")
+        raise RuntimeError(
+            "Your account was created, but its profile could not be loaded."
+        )
 
-    return result.data
+    return result.data[0]
 
 
 def log_audit_event(
@@ -61,37 +57,22 @@ def log_audit_event(
     indicator=None,
     details=None
 ):
-    """Save an audit event for the currently authenticated user."""
-
+    """Insert one audit event and return a visible success/error result."""
     if not user or not user.get("id"):
-        return {
-            "success": False,
-            "error": "Authenticated user ID is missing."
-        }
+        return {"success": False, "error": "No authenticated user ID was supplied."}
 
     payload = {
         "user_id": user["id"],
         "username": user.get("username") or user.get("email") or "user",
         "action": action,
-        "status": status,
         "indicator": indicator,
+        "status": status,
         "details": details or {}
     }
 
     try:
-        response = (
-            client.table("audit_logs")
-            .insert(payload)
-            .execute()
-        )
-
-        return {
-            "success": True,
-            "data": response.data or []
-        }
-
+        response = client.table("audit_logs").insert(payload).execute()
+        return {"success": True, "data": response.data or []}
     except Exception as exc:
-        return {
-            "success": False,
-            "error": str(exc)
-        }
+        # Return the real Supabase error instead of silently hiding it.
+        return {"success": False, "error": str(exc)}
