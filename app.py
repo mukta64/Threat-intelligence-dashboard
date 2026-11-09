@@ -213,8 +213,11 @@ current_user = st.session_state["auth_user"]
 # Show any login/signup audit insertion error after Streamlit reruns.
 audit_login_error = st.session_state.get("audit_login_error")
 if audit_login_error:
-    st.error("The account login succeeded, but its audit record was NOT saved.")
-    st.code(str(audit_login_error))
+    st.warning(
+        "Login succeeded, but the security audit record could not be saved. "
+        "Please contact the administrator."
+    )
+
 
 # Refresh the user's role from the database on each app run.
 try:
@@ -225,15 +228,32 @@ try:
         .execute()
         .data
     )
-    if profile_rows:
-        current_user["username"] = profile_rows[0].get(
-            "username", current_user.get("username", "")
-        )
-        current_user["role"] = profile_rows[0].get("role", "user")
-except Exception as exc:
-    st.error("Could not verify your account profile. Check Supabase table permissions.")
-    st.caption(str(exc))
+
+    # Do not allow access if the user's profile cannot be found.
+    if not profile_rows:
+        st.session_state.pop("auth_user", None)
+
+        try:
+            supabase.auth.sign_out()
+        except Exception:
+            pass
+
+        st.error("Your account profile could not be verified. Please log in again.")
+        st.stop()
+
+    # Update the session using the database profile.
+    current_user["username"] = profile_rows[0].get(
+        "username", current_user.get("username", "")
+    )
+
+    current_user["role"] = (
+        "admin" if profile_rows[0].get("role") == "admin" else "user"
+    )
+
+except Exception:
+    st.error("Could not verify your account profile. Please try again later.")
     st.stop()
+
 
 
 # ==================================================
@@ -282,6 +302,7 @@ def save_investigation(indicator, vt_result, abuse_result, user_id):
     if vt_result and "error" not in vt_result:
         attrs = vt_result.get("attributes", {})
         stats = attrs.get("last_analysis_stats", {})
+
         try:
             save_history({
                 "Date": today,
@@ -293,8 +314,9 @@ def save_investigation(indicator, vt_result, abuse_result, user_id):
                 "Harmless": stats.get("harmless", 0),
                 "Undetected": stats.get("undetected", 0)
             }, user_id)
-        except Exception as exc:
-            st.warning(f"Could not save VirusTotal history: {exc}")
+
+        except Exception:
+            st.warning("Could not save VirusTotal investigation history.")
 
     if abuse_result and "error" not in abuse_result:
         try:
@@ -307,8 +329,10 @@ def save_investigation(indicator, vt_result, abuse_result, user_id):
                 "Total Reports": abuse_result.get("totalReports", ""),
                 "Country": abuse_result.get("countryCode", "")
             }, user_id)
-        except Exception as exc:
-            st.warning(f"Could not save AbuseIPDB history: {exc}")
+
+        except Exception:
+            st.warning("Could not save AbuseIPDB investigation history.")
+
 
 
 # ==================================================
@@ -324,7 +348,7 @@ st.sidebar.caption(f"Role: {current_user.get('role', 'user')}")
 if st.sidebar.button("Logout", use_container_width=True):
     audit_result = log_audit_event(supabase, current_user, "logout", "success")
     if not audit_result.get("success"):
-        st.warning("Logout audit record could not be saved: " + audit_result.get("error", "Unknown error"))
+        st.warning("Logout succeeded, but its audit record could not be saved.")
     try:
         supabase.auth.sign_out()
     except Exception:
