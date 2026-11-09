@@ -1,7 +1,36 @@
+
+# Environment variables and secrets
 .env
-.venv/
-__pycache__/
-*.pyc
-threat_history.db
+.env.*
+!.env.example
+
+# Streamlit secrets
 .streamlit/secrets.toml
+.streamlit/credentials.toml
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyc
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Local databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs and test files
+*.log
+.pytest_cache/
+.coverage
+
+# Local certificates
 ssl/
+
+# Operating system files
+.DS_Store
+Thumbs.db
