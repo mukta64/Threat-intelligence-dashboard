@@ -25,6 +25,13 @@ def get_api_key():
 def identify_indicator(indicator):
     indicator = indicator.strip()
 
+    if not indicator or len(indicator) > 2048:
+        return None
+
+    # Reject whitespace and control characters
+    if any(char.isspace() or ord(char) < 32 for char in indicator):
+        return None
+
     # IP address
     try:
         ipaddress.ip_address(indicator)
@@ -32,7 +39,7 @@ def identify_indicator(indicator):
     except ValueError:
         pass
 
-    # File hashes
+    # File hashes: MD5, SHA-1 and SHA-256
     if re.fullmatch(r"[a-fA-F0-9]{32}", indicator):
         return "file"
 
@@ -42,27 +49,49 @@ def identify_indicator(indicator):
     if re.fullmatch(r"[a-fA-F0-9]{64}", indicator):
         return "file"
 
-    # URL
-    if "://" in indicator:
-        parsed = urlparse(indicator)
-
-        if parsed.scheme in ("http", "https") and parsed.hostname:
-            return "url"
-
-        return None
-
-    # Domain
-    domain = indicator.lower().rstrip(".")
-
-    if len(domain) > 253:
-        return None
-
+    # Domain validation
     domain_pattern = (
         r"^(?=.{1,253}$)"
         r"(?:[a-zA-Z0-9]"
         r"(?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+"
         r"[a-zA-Z]{2,63}$"
     )
+
+    # URL validation
+    if "://" in indicator:
+        try:
+            parsed = urlparse(indicator)
+
+            if parsed.scheme not in ("http", "https"):
+                return None
+
+            if not parsed.hostname:
+                return None
+
+            # Reject invalid ports
+            if parsed.port is not None and not (
+                1 <= parsed.port <= 65535
+            ):
+                return None
+
+            hostname = parsed.hostname.lower().rstrip(".")
+
+            try:
+                ipaddress.ip_address(hostname)
+                return "url"
+            except ValueError:
+                pass
+
+            if re.fullmatch(domain_pattern, hostname):
+                return "url"
+
+            return None
+
+        except ValueError:
+            return None
+
+    # Normal domain
+    domain = indicator.lower().rstrip(".")
 
     if re.fullmatch(domain_pattern, domain):
         return "domain"
