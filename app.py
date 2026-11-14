@@ -29,47 +29,174 @@ st.set_page_config(
 
 st.markdown("""
 <style>
+:root {
+    --bg: #07111f;
+    --panel: #101e30;
+    --panel-soft: #14263b;
+    --border: #243b55;
+    --text: #e5eef8;
+    --muted: #91a6bd;
+    --cyan: #38bdf8;
+    --blue: #0ea5e9;
+}
 .stApp {
-    background-color: #0B1220;
+    background:
+        radial-gradient(circle at 12% 0%, rgba(14,165,233,.10), transparent 28%),
+        linear-gradient(135deg, #07111f 0%, #0a1626 55%, #0b1728 100%);
+    color: var(--text);
 }
-
+[data-testid="stHeader"] {
+    background: rgba(7,17,31,.75);
+}
 [data-testid="stSidebar"] {
-    background-color: #111C2E;
+    background: linear-gradient(180deg, #0b192a 0%, #101e30 100%);
+    border-right: 1px solid var(--border);
 }
-
+[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p,
+[data-testid="stSidebar"] label {
+    color: #c5d5e6;
+}
+[data-testid="stSidebar"] [role="radiogroup"] label {
+    border-radius: 9px;
+    padding: 7px 10px;
+}
+.main .block-container {
+    max-width: 1500px;
+    padding-top: 2.1rem;
+    padding-bottom: 3rem;
+}
+h1, h2, h3, h4 {
+    color: #edf6ff !important;
+    letter-spacing: -0.02em;
+}
+h1 { font-weight: 750 !important; }
+h2, h3 { font-weight: 680 !important; }
+p, li, label, [data-testid="stCaptionContainer"] {
+    color: #c2d1e1;
+}
 .main-title {
-    font-size: 32px;
-    font-weight: 700;
-    color: #38BDF8;
+    font-size: clamp(27px, 3vw, 38px);
+    font-weight: 800;
+    letter-spacing: -1.2px;
+    color: #eaf6ff;
+    margin-bottom: 5px;
 }
-
 .subtitle {
-    color: #94A3B8;
+    color: var(--muted);
+    font-size: 15px;
+    margin-bottom: 20px;
+}
+.hero-panel {
+    background: linear-gradient(115deg, rgba(14,165,233,.16), rgba(16,30,48,.92) 58%);
+    border: 1px solid #28506d;
+    border-radius: 18px;
+    padding: 24px 26px;
+    margin-bottom: 20px;
+}
+.hero-eyebrow {
+    color: #7dd3fc;
+    text-transform: uppercase;
+    letter-spacing: 1.7px;
+    font-size: 11px;
+    font-weight: 750;
+}
+.hero-heading {
+    color: #f0f9ff;
+    font-size: 29px;
+    font-weight: 800;
+    margin: 7px 0 5px 0;
+}
+.hero-copy {
+    color: #a9bfd3;
     font-size: 14px;
 }
-
+.section-kicker {
+    color: #7dd3fc;
+    font-size: 11px;
+    font-weight: 750;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+}
 div[data-testid="stMetric"] {
-    background-color: #142238;
-    border: 1px solid #263B55;
-    padding: 16px;
+    background: linear-gradient(145deg, #14283e, #101e30);
+    border: 1px solid #29425d;
+    border-radius: 15px;
+    padding: 17px 18px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.14);
+}
+div[data-testid="stMetric"] label {
+    color: #9db3c9 !important;
+    font-size: 12px !important;
+    font-weight: 650 !important;
+}
+div[data-testid="stMetric"] [data-testid="stMetricValue"] {
+    color: #f0f8ff !important;
+    font-size: 29px !important;
+    font-weight: 780 !important;
+}
+div[data-testid="stMetric"] [data-testid="stMetricDelta"] {
+    color: #7dd3fc !important;
+}
+.stButton > button, .stDownloadButton > button,
+[data-testid="stFormSubmitButton"] > button {
+    background: linear-gradient(100deg, #0284c7, #0ea5e9);
+    color: #ffffff !important;
+    border: 1px solid #38bdf8;
+    border-radius: 10px;
+    min-height: 42px;
+    font-weight: 700;
+    transition: .18s ease;
+}
+.stButton > button:hover, .stDownloadButton > button:hover,
+[data-testid="stFormSubmitButton"] > button:hover {
+    background: linear-gradient(100deg, #0369a1, #0284c7);
+    border-color: #7dd3fc;
+    transform: translateY(-1px);
+}
+input, textarea, [data-baseweb="select"] > div {
+    background-color: #0e1b2c !important;
+    color: #e5eef8 !important;
+    border-color: #2b4560 !important;
+    border-radius: 9px !important;
+}
+[data-testid="stDataFrame"], [data-testid="stTable"] {
+    border: 1px solid #29425d;
+    border-radius: 12px;
+    overflow: hidden;
+}
+[data-testid="stExpander"] {
+    background: rgba(16,30,48,.72);
+    border: 1px solid #29425d;
     border-radius: 12px;
 }
-
-div[data-testid="stMetric"] label {
-    color: #94A3B8;
+[data-testid="stTabs"] button {
+    color: #b9cde0;
 }
-
-.stButton > button {
-    background-color: #0284C7;
-    color: white;
-    border-radius: 8px;
-    border: none;
-    font-weight: 600;
+[data-testid="stTabs"] button[aria-selected="true"] {
+    color: #7dd3fc;
+    border-bottom-color: #38bdf8;
 }
-
-.stButton > button:hover {
-    background-color: #0369A1;
-    color: white;
+hr {
+    border-color: #243b55 !important;
+}
+div[data-testid="stAlert"] {
+    border-radius: 11px;
+}
+[data-testid="stPlotlyChart"], [data-testid="stVegaLiteChart"],
+[data-testid="stArrowVegaLiteChart"], [data-testid="stDeckGlJsonChart"] {
+    background: #101e30;
+    border: 1px solid #29425d;
+    border-radius: 14px;
+    padding: 8px;
+}
+.small-muted {
+    color: #91a6bd;
+    font-size: 12px;
+}
+@media (max-width: 800px) {
+    .main .block-container { padding-left: 1rem; padding-right: 1rem; }
+    .hero-heading { font-size: 23px; }
 }
 </style>
 """, unsafe_allow_html=True)
@@ -295,6 +422,26 @@ def make_table(data):
     return pd.DataFrame(rows)
 
 
+def page_heading(eyebrow, title, description):
+    st.markdown(
+        f"""
+        <div class="hero-panel">
+            <div class="hero-eyebrow">{eyebrow}</div>
+            <div class="hero-heading">{title}</div>
+            <div class="hero-copy">{description}</div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+
+def section_heading(eyebrow, title):
+    st.markdown(
+        f'<div class="section-kicker">{eyebrow}</div><h3>{title}</h3>',
+        unsafe_allow_html=True
+    )
+
+
 def save_investigation(indicator, vt_result, abuse_result, user_id):
     today = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     indicator_type = identify_indicator(indicator)
@@ -383,17 +530,11 @@ st.sidebar.write("🟢 AbuseIPDB API")
 
 if page == "Overview":
 
-    st.markdown(
-        '<div class="main-title">🛡️ Threat Intelligence Dashboard</div>',
-        unsafe_allow_html=True
+    page_heading(
+        "SECURITY OPERATIONS • THREAT INTELLIGENCE",
+        "Threat Intelligence Command Center",
+        "Investigate suspicious indicators, review threat signals and monitor investigation activity from one workspace."
     )
-
-    st.markdown(
-        '<div class="subtitle">Automated investigation of suspicious IPs, domains, URLs and file hashes.</div>',
-        unsafe_allow_html=True
-    )
-
-    st.write("")
 
     try:
         history = get_history(current_user["id"])
@@ -424,6 +565,7 @@ if page == "Overview":
         for item in history
     )
 
+    section_heading("LIVE WORKSPACE SUMMARY", "Investigation Overview")
     c1, c2, c3, c4 = st.columns(4)
 
     c1.metric("Investigation Records", total_records)
@@ -434,7 +576,8 @@ if page == "Overview":
     st.divider()
 
     
-    st.subheader("Quick Investigation")
+    section_heading("START AN INVESTIGATION", "Quick Investigation")
+    st.caption("Submit an IP address, domain, URL or file hash to open a full analysis.")
 
     quick_indicator = st.text_input(
         "Enter an IP address, domain, URL or file hash",
@@ -459,7 +602,7 @@ if page == "Overview":
 
     st.divider()
 
-    st.subheader("Recent Investigations")
+    section_heading("LATEST ACTIVITY", "Recent Investigations")
 
     if history:
 
@@ -481,12 +624,13 @@ if page == "Overview":
 
 elif page == "Investigate Indicator":
 
-    st.title("🔍 Investigate Indicator")
-
-    st.write(
-        "Enter an IP address, domain, URL or file hash "
-        "to retrieve threat intelligence."
+    page_heading(
+        "THREAT ANALYSIS WORKSPACE",
+        "Investigate an Indicator",
+        "Run a multi-source investigation using VirusTotal and, for IP addresses, AbuseIPDB."
     )
+
+    st.caption("Supported indicators: public IP addresses, domains, HTTP/HTTPS URLs and MD5, SHA-1 or SHA-256 hashes.")
 
     default_value = st.session_state.pop(
         "prefill_indicator",
@@ -566,9 +710,8 @@ elif page == "Investigate Indicator":
 
         st.divider()
 
-        st.subheader("Investigation Results")
-
-        st.write("**Indicator:**", indicator)
+        section_heading("ANALYSIS REPORT", "Investigation Results")
+        st.markdown(f"**Indicator under investigation:** `{indicator}`")
 
         # ------------------------------------------
         # VIRUSTOTAL
@@ -586,7 +729,7 @@ elif page == "Investigate Indicator":
             attrs = vt_result.get("attributes", {})
             stats = attrs.get("last_analysis_stats", {})
 
-            st.markdown("### 🦠 VirusTotal Analysis")
+            section_heading("SOURCE 01 • VIRUSTOTAL", "Antivirus & Reputation Analysis")
 
             if stats:
 
@@ -833,7 +976,7 @@ elif page == "Investigate Indicator":
 
             st.divider()
 
-            st.markdown("### 🚨 AbuseIPDB Analysis")
+            section_heading("SOURCE 02 • ABUSEIPDB", "Community Abuse Intelligence")
 
             if "error" in abuse_result:
 
@@ -1025,7 +1168,11 @@ elif page == "History":
 
 elif page == "Analytics":
 
-    st.title("📊 Threat Analytics")
+    page_heading(
+        "SECURITY METRICS • ACTIVITY TRENDS",
+        "Threat Analytics",
+        "Explore investigation sources, malicious detections and activity over time."
+    )
 
     history = get_history(current_user["id"])
 
@@ -1033,13 +1180,13 @@ elif page == "Analytics":
 
         df = pd.DataFrame(history)
 
-        st.subheader("Investigations by Source")
+        section_heading("DATA SOURCE BREAKDOWN", "Investigations by Source")
 
         source_counts = df["Source"].value_counts()
 
         st.bar_chart(source_counts)
 
-        st.subheader("Malicious Detections")
+        section_heading("DETECTION INSIGHTS", "Malicious Detections")
 
         if "Malicious" in df.columns:
 
@@ -1064,7 +1211,7 @@ elif page == "Analytics":
 
                 st.info("No VirusTotal records available for this chart.")
 
-        st.subheader("Recent Investigation Activity")
+        section_heading("ACTIVITY TIMELINE", "Recent Investigation Activity")
 
         if "Date" in df.columns:
 
