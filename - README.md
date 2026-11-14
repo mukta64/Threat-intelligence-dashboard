@@ -1,90 +1,134 @@
 # 🛡️ Automated Threat Intelligence Dashboard
 
-## Project Overview
+An interactive, web-based threat intelligence platform built with Python and Streamlit. It helps users investigate suspicious IP addresses, domains, URLs, and file hashes using external threat intelligence services.
 
-The Automated Threat Intelligence Dashboard is a cybersecurity project developed using Python and Streamlit. It helps users investigate suspicious IP addresses, domains, URLs and file hashes by collecting threat intelligence from VirusTotal and AbuseIPDB APIs.
+## 📌 Project Overview
 
-The dashboard provides investigation results, threat indicators, historical records and analytics through a user-friendly interface.
+The Automated Threat Intelligence Dashboard brings threat intelligence information into one place. Users can submit an indicator of compromise (IOC) and review available security information from VirusTotal and AbuseIPDB.
 
-## Features
+The application includes user authentication, investigation history, analytics, and an administrative audit-log interface.
 
-- **Threat Intelligence Investigation:** Analyze IP addresses, domains, URLs and file hashes.
-- **VirusTotal Integration:** View malicious detections, security vendor results, community reputation and threat information.
-- **AbuseIPDB Integration:** Check IP abuse confidence scores, report counts, ISP information and abuse reports.
-- **User Authentication:** Sign up and log in using Supabase Authentication.
-- **Role-Based Access:** Separate normal user and administrator access.
-- **Investigation History:** Store and review investigation records.
-- **Admin Audit Logs:** Allow administrators to review security-related activity.
-- **Analytics Dashboard:** Visualize investigation statistics.
-- **Report Export:** Download investigation results in JSON and CSV formats.
+## ✨ Features
 
-## Technologies Used
+- **Indicator Investigation:** Investigate IP addresses, domains, URLs, and file hashes.
+- **VirusTotal Integration:** Retrieve threat intelligence results from VirusTotal.
+- **AbuseIPDB Integration:** Check public IP addresses for abuse reports and confidence scores.
+- **User Authentication:** Sign-in and account creation using Supabase.
+- **Investigation History:** Store and view investigation records.
+- **Analytics Dashboard:** Visualize investigation activity and detection information.
+- **Admin Dashboard:** Access the administrative audit-log interface.
+- **Interactive Interface:** Dark-themed dashboard built with Streamlit.
 
-- Python
-- Streamlit
-- Pandas
-- Supabase
-- PostgreSQL
-- VirusTotal API
-- AbuseIPDB API
-- Git and GitHub
+## 🧰 Technologies Used
 
-## Project Architecture
+| Technology | Purpose |
+|---|---|
+| Python | Core programming language |
+| Streamlit | Web application and dashboard |
+| VirusTotal API | Threat intelligence lookups |
+| AbuseIPDB API | IP reputation checks |
+| Supabase | Authentication and database |
+| Pandas | Data handling and analysis |
+| Git and GitHub | Version control and project hosting |
+| Streamlit Community Cloud | Application deployment |
 
-1. User signs in through Supabase Authentication.
-2. User submits an IP address, domain, URL or file hash.
-3. The application validates the submitted indicator.
-4. VirusTotal retrieves available threat intelligence.
-5. AbuseIPDB checks IP addresses.
-6. Results are displayed in the dashboard.
-7. Investigation history and audit events are stored in Supabase.
+## 🏗️ Project Structure
 
-## Installation and Setup
+```text
+Threat-intelligence-dashboard/
+│
+├── app.py
+├── requirements.txt
+├── .gitignore
+├── README.md
+│
+└── modules/
+    ├── __init__.py
+    ├── virustotal.py
+    ├── abuseipdb.py
+    ├── history.py
+    ├── auth.py
+    └── supabase_client.py
+```
+
+## ⚙️ Installation and Setup
 
 ### 1. Clone the repository
 
 ```bash
-git clone YOUR_GITHUB_REPOSITORY_URL
+git clone https://github.com/YOUR-GITHUB-USERNAME/Threat-intelligence-dashboard.git
+```
+
+### 2. Open the project folder
+
+```bash
 cd Threat-intelligence-dashboard
 ```
 
-### 2. Install dependencies
+### 3. Install dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 3. Configure environment variables
+### 4. Configure API keys and Supabase credentials
 
-Create a `.env` file in the project root:
+Create a `.env` file in the project folder and add your credentials:
 
 ```env
 VT_API_KEY=your_virustotal_api_key
 ABUSEIPDB_API_KEY=your_abuseipdb_api_key
 SUPABASE_URL=your_supabase_project_url
-SUPABASE_KEY=your_supabase_anon_key
+SUPABASE_KEY=your_supabase_anon_or_publishable_key
 ```
 
-Never upload your `.env` file or API keys to GitHub.
+Use your own credentials. Never upload `.env` to GitHub.
 
-### 4. Run the application
+### 5. Run the application
 
 ```bash
 streamlit run app.py
 ```
 
-## Security Considerations
+The application will open in your browser.
 
-- API credentials are stored outside the application source code.
+## 🔍 How It Works
+
+1. A user signs in or creates an account.
+2. The user enters an IP address, domain, URL, or file hash.
+3. The application identifies the indicator type.
+4. VirusTotal is queried for available threat intelligence.
+5. AbuseIPDB is queried for public IP addresses.
+6. The investigation results are displayed in the dashboard.
+7. Investigation records are stored in Supabase.
+8. Users can review available history and analytics.
+
+## 🔐 Security Considerations
+
+- API credentials are configured through environment variables or Streamlit secrets.
 - User authentication is handled through Supabase.
-- User and administrator roles are managed through database profiles.
-- Supabase Row Level Security (RLS) is used to control database access.
-- Audit logging records relevant application activities.
+- Database access is intended to be controlled through Supabase Row Level Security policies.
+- Administrative functionality is role-based.
+- Sensitive credentials should never be committed to the public repository.
 
-## Project Purpose
+## 🚀 Deployment
 
-The purpose of this project is to demonstrate practical cybersecurity skills in threat intelligence gathering, API integration, security monitoring, authentication, database security and dashboard development.
+The application is designed to be deployed using Streamlit Community Cloud.
 
-## Disclaimer
+Configure the required credentials in the application's Streamlit Cloud secrets settings before deployment.
 
-This dashboard is intended for educational and cybersecurity investigation purposes. Threat intelligence results depend on external API availability and submitted data. A reported indicator should not automatically be treated as proof of malicious activity.
+## 🎯 Learning Outcomes
+
+Through this project, I gained practical experience with:
+
+- Threat intelligence and IOC investigation.
+- Integrating external security APIs.
+- Python-based application development.
+- Streamlit dashboard development.
+- Authentication and database integration.
+- GitHub version control and cloud deployment.
+
+## 👩‍💻 Author
+
+**Cybersecurity Student | Aspiring Threat Intelligence Analyst**
+
